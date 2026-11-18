@@ -1,0 +1,16 @@
+@import "tailwindcss";
+
+:root { color-scheme: light; }
+body { background: var(--color-slate-50); color: var(--color-slate-900); -webkit-font-smoothing: antialiased; }
+
+@utility btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-lg); padding: 0.625rem 1.25rem;
+  font-size: var(--text-sm); font-weight: 600; transition: background-color .15s;
+}
+@utility btn-primario { @apply btn bg-slate-900 text-white hover:bg-slate-700 disabled:opacity-60; }
+@utility btn-acento { @apply btn bg-teal-400 text-slate-950 hover:bg-teal-300; }
+@utility btn-borde { @apply btn border border-slate-300 bg-white hover:bg-slate-100; }
+@utility campo { @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100; }
+@utility etiqueta { @apply mb-1.5 block text-sm font-medium text-slate-700; }
+@utility tarjeta { @apply rounded-xl border border-slate-200 bg-white p-6 shadow-sm; }
