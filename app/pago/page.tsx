@@ -19,7 +19,8 @@ function Resultado() {
     if (!id) { setEstado("ERROR"); return; }
     let intentos = 0;
     const consultar = async () => {
-      const r = await fetch(`https://production.wompi.co/v1/transactions/${id}`).then((x) => x.json()).catch(() => null);
+      let r = await fetch(`https://production.wompi.co/v1/transactions/${id}`).then((x) => x.json()).catch(() => null);
+      if (!r?.data) r = await fetch(`https://sandbox.wompi.co/v1/transactions/${id}`).then((x) => x.json()).catch(() => null);
       const s = r?.data?.status ?? "ERROR";
       setEstado(s);
       if (s === "PENDING" && intentos++ < 10) setTimeout(consultar, 4000);

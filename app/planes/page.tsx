@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { clienteNavegador } from "@/lib/supabase";
 import { PLANES, cop } from "@/lib/catalogos";
@@ -9,13 +9,24 @@ export default function Planes() {
   const [periodo, setPeriodo] = useState<"mensual" | "anual">("anual");
   const [cargando, setCargando] = useState("");
   const [error, setError] = useState("");
+  const [esAdmin, setEsAdmin] = useState(false);
+  const [modoPrueba, setModoPrueba] = useState(false);
+
+  useEffect(() => {
+    const supabase = clienteNavegador();
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (!data.user) return;
+      const { data: perfil } = await supabase.from("perfiles").select("es_admin").eq("id", data.user.id).single();
+      setEsAdmin(!!perfil?.es_admin);
+    });
+  }, []);
 
   async function pagar(plan: string) {
     setError(""); setCargando(plan);
     const supabase = clienteNavegador();
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { router.push("/entrar?siguiente=planes"); return; }
-    const { data, error } = await supabase.functions.invoke("crear-pago-wompi", { body: { plan, periodo } });
+    const { data, error } = await supabase.functions.invoke("crear-pago-wompi", { body: { plan, periodo, modo: modoPrueba ? "prueba" : "real" } });
     if (error || !data?.url) { setError(data?.error ?? "No pudimos iniciar el pago. Intenta de nuevo."); setCargando(""); return; }
     window.location.href = data.url;
   }
@@ -33,6 +44,13 @@ export default function Planes() {
           </button>
         ))}
       </div>
+
+      {esAdmin && (
+        <label className="mt-4 flex items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+          <input type="checkbox" checked={modoPrueba} onChange={(e) => setModoPrueba(e.target.checked)} />
+          Modo prueba de Wompi (sandbox, sin cobro real) — solo visible para administradores
+        </label>
+      )}
 
       <div className="mt-6 grid gap-4 md:grid-cols-2">
         {PLANES.map((p) => {
