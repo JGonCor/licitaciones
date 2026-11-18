@@ -2,8 +2,8 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const SECRETOS: Record<string, string> = {
-  prod: Deno.env.get("WOMPI_EVENTS_SECRET") ?? "",
-  test: Deno.env.get("WOMPI_TEST_EVENTS_SECRET") ?? "",
+  prod: (Deno.env.get("WOMPI_EVENTS_SECRET") ?? "").trim(),
+  test: (Deno.env.get("WOMPI_TEST_EVENTS_SECRET") ?? "").trim(),
 };
 
 async function sha256(texto: string) {
@@ -26,7 +26,13 @@ Deno.serve(async (req) => {
   // Verificar checksum: valores de signature.properties + timestamp + secreto de eventos
   const props: string[] = evento.signature.properties ?? [];
   const cadena = props.map((p) => valor(evento.data, p)).join("") + evento.timestamp + EVENTS;
-  if ((await sha256(cadena)).toUpperCase() !== String(evento.signature.checksum).toUpperCase()) {
+  const recibido = String(evento.signature.checksum).toUpperCase();
+  if ((await sha256(cadena)).toUpperCase() !== recibido) {
+    // Diagnóstico sin exponer secretos: ¿coincide con el secreto de integridad (secretos intercambiados)?
+    const integ = ((ambiente === "test" ? Deno.env.get("WOMPI_TEST_INTEGRITY_SECRET") : Deno.env.get("WOMPI_INTEGRITY_SECRET")) ?? "").trim();
+    const base = props.map((p) => valor(evento.data, p)).join("") + evento.timestamp;
+    const intercambiado = integ && (await sha256(base + integ)).toUpperCase() === recibido;
+    console.error(JSON.stringify({ firma: "invalida", ambiente, props, largo_secreto: EVENTS.length, prefijo: EVENTS.slice(0, 9), intercambiado }));
     return new Response("firma inválida", { status: 401 });
   }
 
