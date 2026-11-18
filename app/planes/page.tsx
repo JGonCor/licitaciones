@@ -27,7 +27,11 @@ export default function Planes() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { router.push("/entrar?siguiente=planes"); return; }
     const { data, error } = await supabase.functions.invoke("crear-pago-wompi", { body: { plan, periodo, modo: modoPrueba ? "prueba" : "real" } });
-    if (error || !data?.url) { setError(data?.error ?? "No pudimos iniciar el pago. Intenta de nuevo."); setCargando(""); return; }
+    if (error || !data?.url) {
+      let mensaje = data?.error;
+      try { mensaje = mensaje ?? (await (error as { context?: Response })?.context?.json())?.error; } catch { /* sin detalle */ }
+      setError(mensaje ?? "No pudimos iniciar el pago. Intenta de nuevo."); setCargando(""); return;
+    }
     window.location.href = data.url;
   }
 

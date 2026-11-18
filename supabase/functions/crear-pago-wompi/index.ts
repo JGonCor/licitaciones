@@ -2,8 +2,8 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const LLAVES = {
-  prod: { publica: "pub_prod_3XZc7nFMw7265ba4EzYFQOkltFPpkLLh", integridad: Deno.env.get("WOMPI_INTEGRITY_SECRET") ?? "" },
-  prueba: { publica: Deno.env.get("WOMPI_TEST_PUBLIC_KEY") ?? "", integridad: Deno.env.get("WOMPI_TEST_INTEGRITY_SECRET") ?? "" },
+  prod: { publica: "pub_prod_3XZc7nFMw7265ba4EzYFQOkltFPpkLLh", integridad: (Deno.env.get("WOMPI_INTEGRITY_SECRET") ?? "").trim(), prefijo: "prod_integrity_", nombre: "WOMPI_INTEGRITY_SECRET" },
+  prueba: { publica: (Deno.env.get("WOMPI_TEST_PUBLIC_KEY") ?? "").trim(), integridad: (Deno.env.get("WOMPI_TEST_INTEGRITY_SECRET") ?? "").trim(), prefijo: "test_integrity_", nombre: "WOMPI_TEST_INTEGRITY_SECRET" },
 };
 const APP_URL = Deno.env.get("APP_URL") ?? "https://licitaciones.nexuslottery.site";
 
@@ -48,6 +48,14 @@ Deno.serve(async (req) => {
   }
   const llaves = prueba ? LLAVES.prueba : LLAVES.prod;
   if (!llaves.publica || !llaves.integridad) return json({ error: "Pasarela no configurada" }, 500);
+  // Validación de formato: evita cargar el secreto equivocado (eventos vs integridad, prueba vs real)
+  if (!llaves.integridad.startsWith(llaves.prefijo)) {
+    const actual = llaves.integridad.split("_").slice(0, 2).join("_") || "vacío";
+    return json({ error: `El secreto ${llaves.nombre} debe empezar por "${llaves.prefijo}" y el cargado empieza por "${actual}_". Revísalo en Supabase.` }, 500);
+  }
+  if (prueba && !llaves.publica.startsWith("pub_test_")) {
+    return json({ error: `WOMPI_TEST_PUBLIC_KEY debe empezar por "pub_test_".` }, 500);
+  }
 
   const centavos = pesos * 100;
   const referencia = `${prueba ? "TEST" : "NXL"}-${plan}-${periodo}-${user.id.slice(0, 8)}-${Date.now()}`;
