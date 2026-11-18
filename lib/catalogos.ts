@@ -22,13 +22,11 @@ export const cop = new Intl.NumberFormat("es-CO", { style: "currency", currency:
 
 export const PLANES = [
   {
-    id: "basico", nombre: "Básico", precio: "$39.000", periodo: "COP / mes",
+    id: "basico", nombre: "Básico", mensual: 39000, anual: 390000,
     puntos: ["1 alerta personalizada", "Resumen diario a las 7:00 a.m.", "Filtros por departamento, tipo y monto", "Hasta 40 procesos por correo"],
-    link: process.env.NEXT_PUBLIC_HOTMART_BASICO || "",
   },
   {
-    id: "pro", nombre: "Pro", precio: "$79.000", periodo: "COP / mes", destacado: true,
+    id: "pro", nombre: "Pro", mensual: 79000, anual: 790000, destacado: true,
     puntos: ["Hasta 5 alertas (una por línea de negocio)", "Palabras clave y exclusiones ilimitadas", "Filtro por municipio y modalidad", "Soporte prioritario por correo"],
-    link: process.env.NEXT_PUBLIC_HOTMART_PRO || "",
   },
 ];

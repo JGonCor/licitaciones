@@ -1,0 +1,58 @@
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "jsr:@supabase/supabase-js@2";
+
+const PUBLIC_KEY = "pub_prod_3XZc7nFMw7265ba4EzYFQOkltFPpkLLh";
+const INTEGRITY = Deno.env.get("WOMPI_INTEGRITY_SECRET") ?? "";
+const APP_URL = Deno.env.get("APP_URL") ?? "https://licitaciones.nexuslottery.site";
+
+// Precios en pesos (fuente de verdad del servidor)
+const PRECIOS: Record<string, Record<string, number>> = {
+  basico: { mensual: 39000, anual: 390000 },
+  pro: { mensual: 79000, anual: 790000 },
+};
+
+const cors = {
+  "Access-Control-Allow-Origin": APP_URL,
+  "Access-Control-Allow-Headers": "authorization, content-type, apikey, x-client-info",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { ...cors, "Content-Type": "application/json" } });
+
+async function sha256(texto: string) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(texto));
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+  if (!INTEGRITY) return json({ error: "Pasarela no configurada" }, 500);
+
+  const url = Deno.env.get("SUPABASE_URL")!;
+  const auth = req.headers.get("Authorization") ?? "";
+  const usuario = createClient(url, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: auth } } });
+  const { data: { user } } = await usuario.auth.getUser();
+  if (!user) return json({ error: "Inicia sesión para pagar" }, 401);
+
+  const { plan, periodo } = await req.json().catch(() => ({}));
+  const pesos = PRECIOS[plan]?.[periodo];
+  if (!pesos) return json({ error: "Plan no válido" }, 400);
+
+  const centavos = pesos * 100;
+  const referencia = `NXL-${plan}-${periodo}-${user.id.slice(0, 8)}-${Date.now()}`;
+  const firma = await sha256(`${referencia}${centavos}COP${INTEGRITY}`);
+
+  const admin = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+  const { error } = await admin.from("pagos").insert({ referencia, user_id: user.id, plan, periodo, monto_centavos: centavos });
+  if (error) return json({ error: error.message }, 500);
+
+  const p = new URLSearchParams({
+    "public-key": PUBLIC_KEY,
+    currency: "COP",
+    "amount-in-cents": String(centavos),
+    reference: referencia,
+    "signature:integrity": firma,
+    "redirect-url": `${APP_URL}/pago`,
+    "customer-data:email": user.email ?? "",
+  });
+  return json({ url: `https://checkout.wompi.co/p/?${p}` });
+});

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { PLANES } from "@/lib/catalogos";
+import { PLANES, cop } from "@/lib/catalogos";
 
 const pasos = [
   { t: "Configura tus filtros", d: "Elige palabras clave, departamentos, tipo de contrato y rango de montos en dos minutos." },
@@ -73,7 +73,7 @@ export default function Inicio() {
           {PLANES.map((p) => (
             <div key={p.id} className={`tarjeta ${p.destacado ? "ring-2 ring-teal-500" : ""}`}>
               <h3 className="text-lg font-semibold">{p.nombre}</h3>
-              <p className="mt-2"><span className="text-3xl font-bold">{p.precio}</span> <span className="text-sm text-slate-500">{p.periodo}</span></p>
+              <p className="mt-2"><span className="text-3xl font-bold">{cop.format(p.mensual)}</span> <span className="text-sm text-slate-500">/ mes</span></p>
               <ul className="mt-4 space-y-2 text-sm text-slate-700">{p.puntos.map((x) => <li key={x}>✓ {x}</li>)}</ul>
             </div>
           ))}
